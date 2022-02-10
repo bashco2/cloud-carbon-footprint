@@ -15,19 +15,21 @@ export default interface FootprintEstimate {
   usesAverageCPUConstant?: boolean
 }
 
-export type CostAndCo2eTotals = {
-  cost: number
-  co2e: number
+export type KilowattHourTotals = {
+  usageAmount?: number
+  cost?: number
+  kilowattHours: number
 }
 
-export type Co2ePerCost = { [key: string]: CostAndCo2eTotals }
+export type KilowattHoursByServiceAndUsageUnit = {
+  [key: string]: {
+    [key: string]: KilowattHourTotals
+  }
+}
 
-export enum EstimateClassification {
-  COMPUTE = 'compute',
-  STORAGE = 'storage',
-  NETWORKING = 'networking',
-  MEMORY = 'memory',
-  UNKNOWN = 'unknown',
+export enum AccumulateKilowattHoursBy {
+  COST = 'cost',
+  USAGE_AMOUNT = 'usageAmount',
 }
 
 export const aggregateEstimatesByDay = (
@@ -80,17 +82,83 @@ export interface MutableServiceEstimate {
   usesAverageCPUConstant: boolean
 }
 
-export const accumulateCo2PerCost = (
-  classification: EstimateClassification,
-  co2e: number,
-  cost: number,
-  costPerCo2e: Co2ePerCost,
+export const accumulateKilowattHours = (
+  kilowattHoursByServiceAndUsageUnit: KilowattHoursByServiceAndUsageUnit,
+  billingDataRow: BillingDataRow,
+  kilowattHours: number,
+  accumulateBy: AccumulateKilowattHoursBy,
 ): void => {
-  costPerCo2e[classification].cost += cost
-  costPerCo2e.total.cost += cost
-  if (co2e > 0) {
-    costPerCo2e[classification].co2e += co2e
-    costPerCo2e.total.co2e += co2e
+  setOrAccumulateByServiceAndUsageUnit(
+    kilowattHoursByServiceAndUsageUnit,
+    billingDataRow,
+    kilowattHours,
+    accumulateBy,
+  )
+  setOrAccumulateUsageUnitTotals(
+    kilowattHoursByServiceAndUsageUnit,
+    billingDataRow,
+    kilowattHours,
+    accumulateBy,
+  )
+}
+
+const setOrAccumulateByServiceAndUsageUnit = (
+  kilowattHoursByServiceAndUsageUnit: KilowattHoursByServiceAndUsageUnit,
+  billingDataRow: BillingDataRow,
+  kilowattHours: number,
+  accumulateBy: AccumulateKilowattHoursBy,
+): void => {
+  const { serviceName, usageUnit, [accumulateBy]: accumValue } = billingDataRow
+
+  // Service doesn't exist: set service and usage unit
+  if (!kilowattHoursByServiceAndUsageUnit[serviceName]) {
+    kilowattHoursByServiceAndUsageUnit[serviceName] = {
+      [usageUnit]: {
+        [accumulateBy]: accumValue,
+        kilowattHours: kilowattHours,
+      },
+    }
+    return
+  }
+
+  // Service exists, but no usage unit for the service: set usage unit for service
+  if (
+    kilowattHoursByServiceAndUsageUnit[serviceName] &&
+    !kilowattHoursByServiceAndUsageUnit[serviceName][usageUnit]
+  ) {
+    kilowattHoursByServiceAndUsageUnit[serviceName][usageUnit] = {
+      [accumulateBy]: accumValue,
+      kilowattHours: kilowattHours,
+    }
+    return
+  }
+
+  // Usage unit exists for service - accumulate
+  if (kilowattHoursByServiceAndUsageUnit[serviceName][usageUnit]) {
+    kilowattHoursByServiceAndUsageUnit[serviceName][usageUnit][accumulateBy] +=
+      accumValue
+    kilowattHoursByServiceAndUsageUnit[serviceName][usageUnit].kilowattHours +=
+      kilowattHours
+  }
+}
+
+const setOrAccumulateUsageUnitTotals = (
+  kilowattHoursByServiceAndUsageUnit: KilowattHoursByServiceAndUsageUnit,
+  billingDataRow: BillingDataRow,
+  kilowattHours: number,
+  accumulateBy: AccumulateKilowattHoursBy,
+): void => {
+  const { usageUnit, [accumulateBy]: accumValue } = billingDataRow
+  if (kilowattHoursByServiceAndUsageUnit.total[usageUnit]) {
+    kilowattHoursByServiceAndUsageUnit.total[usageUnit][accumulateBy] +=
+      accumValue
+    kilowattHoursByServiceAndUsageUnit.total[usageUnit].kilowattHours +=
+      kilowattHours
+  } else {
+    kilowattHoursByServiceAndUsageUnit.total[usageUnit] = {
+      [accumulateBy]: accumValue,
+      kilowattHours: kilowattHours,
+    }
   }
 }
 
@@ -226,8 +294,11 @@ export function estimateKwh(
   estimatedCo2e: number,
   region: string,
   emissionsFactors?: CloudConstantsEmissionsFactors,
+  replicationFactor = 1,
 ): number {
   return (
-    estimatedCo2e / (emissionsFactors[region] || emissionsFactors['Unknown'])
+    (estimatedCo2e /
+      (emissionsFactors[region] || emissionsFactors['Unknown'])) *
+    replicationFactor
   )
 }

@@ -4,28 +4,31 @@
 
 import {
   GetRightsizingRecommendationRequest,
-  RightsizingRecommendationList,
   RightsizingRecommendation as AwsRightsizingRecommendation,
+  RightsizingRecommendationList,
 } from 'aws-sdk/clients/costexplorer'
-
 import {
-  ICloudRecommendationsService,
   ComputeEstimator,
+  ICloudRecommendationsService,
   MemoryEstimator,
 } from '@cloud-carbon-footprint/core'
 import {
-  RecommendationResult,
-  Logger,
   AWS_RECOMMENDATIONS_TARGETS,
+  Logger,
+  RecommendationResult,
 } from '@cloud-carbon-footprint/common'
 import { ServiceWrapper } from '../ServiceWrapper'
 import AWSComputeEstimatesBuilder from '../AWSComputeEstimatesBuilder'
 import AWSMemoryEstimatesBuilder from '../AWSMemoryEstimatesBuilder'
-import RightsizingCurrentRecommendation from './RightsizingCurrentRecommendation'
-import RightsizingTargetRecommendation from './RightsizingTargetRecommendation'
-import RightsizingRecommendation from './RightsizingRecommendation'
+import {
+  RightsizingCurrentRecommendation,
+  RightsizingRecommendation,
+  RightsizingTargetRecommendation,
+} from './Rightsizing'
 
-export default class Recommendations implements ICloudRecommendationsService {
+export default class RightsizingRecommendations
+  implements ICloudRecommendationsService
+{
   private readonly rightsizingRecommendationsService: string
   private readonly recommendationsLogger: Logger
   constructor(

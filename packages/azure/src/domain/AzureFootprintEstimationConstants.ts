@@ -8,7 +8,7 @@ import {
   CloudConstantsEmissionsFactors,
   COMPUTE_PROCESSOR_TYPES,
   US_NERC_REGIONS_EMISSIONS_FACTORS,
-  EstimateClassification,
+  EstimateUnknownUsageBy,
 } from '@cloud-carbon-footprint/core'
 
 import { AZURE_REGIONS } from '../lib/AzureRegions'
@@ -115,28 +115,10 @@ export const AZURE_CLOUD_CONSTANTS: CloudConstantsByProvider = {
     DEFAULT: 1,
   },
   // these constants accumulate as the usage rows are mapped over
-  CO2E_PER_COST: {
-    [EstimateClassification.COMPUTE]: {
-      cost: 0,
-      co2e: 0,
-    },
-    [EstimateClassification.STORAGE]: {
-      cost: 0,
-      co2e: 0,
-    },
-    [EstimateClassification.NETWORKING]: {
-      cost: 0,
-      co2e: 0,
-    },
-    [EstimateClassification.MEMORY]: {
-      cost: 0,
-      co2e: 0,
-    },
-    total: {
-      cost: 0,
-      co2e: 0,
-    },
+  KILOWATT_HOURS_BY_SERVICE_AND_USAGE_UNIT: {
+    total: {},
   },
+  ESTIMATE_UNKNOWN_USAGE_BY: EstimateUnknownUsageBy.USAGE_AMOUNT,
   SERVER_EXPECTED_LIFESPAN: 35040, // 4 years in hours
 }
 

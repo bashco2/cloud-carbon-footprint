@@ -3,6 +3,10 @@
  */
 import fs from 'fs'
 import dotenv from 'dotenv'
+import {
+  AWS_DEFAULT_RECOMMENDATIONS_SERVICE,
+  AWS_RECOMMENDATIONS_SERVICES,
+} from './RecommendationsService'
 dotenv.config()
 
 export interface CCFConfig {
@@ -15,6 +19,8 @@ export interface CCFConfig {
     ATHENA_QUERY_RESULT_LOCATION?: string
     ATHENA_REGION?: string
     NAME: string
+    RECOMMENDATIONS_SERVICE: AWS_RECOMMENDATIONS_SERVICES
+    COMPUTE_OPTIMIZER_BUCKET: string
     CURRENT_SERVICES: { key: string; name: string }[]
     CURRENT_REGIONS: string[]
     accounts?: {
@@ -34,11 +40,14 @@ export interface CCFConfig {
       id: string
       name?: string
     }[]
+    USE_CARBON_FREE_ENERGY_PERCENTAGE?: boolean
     USE_BILLING_DATA?: boolean
     BIG_QUERY_TABLE?: string
     BILLING_PROJECT_ID?: string
     BILLING_PROJECT_NAME?: string
     CACHE_BUCKET_NAME?: string
+    VCPUS_PER_CLOUD_COMPOSER_ENVIRONMENT?: number
+    VCPUS_PER_GKE_CLUSTER?: number
   }
   AZURE?: {
     USE_BILLING_DATA?: boolean
@@ -105,6 +114,11 @@ export const appConfig: CCFConfig = {
       },
     },
     NAME: 'AWS',
+    RECOMMENDATIONS_SERVICE:
+      AWS_RECOMMENDATIONS_SERVICES[
+        getEnvVar('AWS_RECOMMENDATIONS_SERVICE') as AWS_RECOMMENDATIONS_SERVICES
+      ] || AWS_DEFAULT_RECOMMENDATIONS_SERVICE,
+    COMPUTE_OPTIMIZER_BUCKET: getEnvVar('AWS_COMPUTE_OPTIMIZER_BUCKET') || '',
     CURRENT_REGIONS: [
       'us-east-1',
       'us-east-2',
@@ -160,9 +174,16 @@ export const appConfig: CCFConfig = {
         name: 'ComputeEngine',
       },
     ],
+    USE_CARBON_FREE_ENERGY_PERCENTAGE:
+      !!process.env.GCP_USE_CARBON_FREE_ENERGY_PERCENTAGE &&
+      process.env.GCP_USE_CARBON_FREE_ENERGY_PERCENTAGE !== 'false',
     USE_BILLING_DATA:
       !!process.env.GCP_USE_BILLING_DATA &&
       process.env.GCP_USE_BILLING_DATA !== 'false',
+    VCPUS_PER_CLOUD_COMPOSER_ENVIRONMENT:
+      parseFloat(getEnvVar('GCP_VCPUS_PER_CLOUD_COMPOSER_ENVIRONMENT')) || 14, // Number of vCPUs in medium environment size
+    VCPUS_PER_GKE_CLUSTER:
+      parseFloat(getEnvVar('GCP_VCPUS_PER_GKE_CLUSTER')) || 3, // Number of vCPUs with default node configuration
     BIG_QUERY_TABLE: getEnvVar('GCP_BIG_QUERY_TABLE') || '',
     BILLING_PROJECT_ID: getEnvVar('GCP_BILLING_PROJECT_ID') || '',
     BILLING_PROJECT_NAME: getEnvVar('GCP_BILLING_PROJECT_NAME') || '',
